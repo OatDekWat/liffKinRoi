@@ -1,52 +1,46 @@
-// --- ตั้งค่า (แก้ไขตรงนี้) ---
-const LIFF_ID = "2008529194-j3wE08Zz";             // ใส่ LIFF ID ของคุณ
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzg0_0f7QP28CFwbXCjS7qHk4pA16ItaAHXqBpnx0SeRwJ-gHmjXIXvxnM8ovtZ-Gsn/exec";  // ใส่ URL ที่ได้จากการ Deploy Google Apps Script
+// --- ตั้งค่า ---
+// ไม่ต้องใช้ LIFF_ID แล้ว
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzg0_0f7QP28CFwbXCjS7qHk4pA16ItaAHXqBpnx0SeRwJ-gHmjXIXvxnM8ovtZ-Gsn/exec"; // ใช้ URL เดิมของคุณ
 
-// --- ตัวแปรระบบ (ห้ามแก้) ---
-let userProfile = null;
-let isAdmin = false;
+// --- ตัวแปรระบบ ---
+// let userProfile = null; // ลบออก
+let isAdmin = false;       // จะเป็น false เสมอ เพราะไม่มีการเช็ค LINE ID
 let currentTable = null;
 
 const indoorTables = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 const outdoorTables = [10, 11, 12, 14];
 
-// --- MAIN FUNCTION ---
+// --- MAIN FUNCTION (แก้ไขใหม่ ไม่ต้องรอ LIFF) ---
 async function main() {
     try {
-        await liff.init({ liffId: LIFF_ID });
-        if (!liff.isLoggedIn()) {
-            liff.login();
-            return;
-        }
-        userProfile = await liff.getProfile();
-        document.getElementById('welcome-msg').innerText = `สวัสดี, ${userProfile.displayName}`;
+        // 1. แสดงข้อความต้อนรับทั่วไป
+        document.getElementById('welcome-msg').innerText = "ยินดีต้อนรับลูกค้าทุกท่าน";
         
-        checkAdminStatus();
+        // 2. ไม่มีการเช็ค Admin (เพราะไม่มี User ID)
+        // checkAdminStatus(); 
+        
+        // 3. ดึงสถานะโต๊ะทันที
         fetchTableStatus();
         setInterval(fetchTableStatus, 10000); // Auto refresh 10s
 
     } catch (err) {
-        console.error('LIFF Init Error:', err);
-        Swal.fire('Error', 'ไม่สามารถเชื่อมต่อ LINE ได้', 'error');
+        console.error('Init Error:', err);
     }
 }
 
-// --- LOGIC เวลาเปิด-ปิด (16:00 - 05:00, หยุดจันทร์) ---
+// --- LOGIC เวลาเปิด-ปิด (เหมือนเดิม) ---
 function checkShopOpen() {
     const now = new Date();
     const hour = now.getHours();
-    let day = now.getDay(); // 0=อาทิตย์, 1=จันทร์
+    let day = now.getDay(); 
 
-    // ถ้ายังไม่ถึงตี 5 ให้นับเป็นวันเก่า (คืนต่อเนื่อง)
     if (hour < 5) {
         day = day - 1;
         if (day === -1) day = 6;
     }
 
-    // หยุดคืนวันจันทร์
     if (day === 1) return { open: false, reason: 'ร้านหยุดทุกวันจันทร์ครับ' };
     
-    // ปิดช่วงเช้าถึงบ่าย (05:00 - 16:00)
     if (hour >= 5 && hour < 16) {
          return { open: false, reason: 'ร้านยังไม่เปิด (เปิด 16:00 - 05:00 น.)' };
     }
@@ -54,16 +48,12 @@ function checkShopOpen() {
     return { open: true };
 }
 
+// ฟังก์ชัน Admin ถูกปิดไว้ เพราะไม่มี Login
+/*
 async function checkAdminStatus() {
-    try {
-        const res = await fetch(`${APPS_SCRIPT_URL}?op=checkAdmin&userId=${userProfile.userId}`);
-        const data = await res.json();
-        if (data.isAdmin) {
-            isAdmin = true;
-            document.getElementById('admin-panel').classList.remove('hidden');
-        }
-    } catch(e) { console.warn(e); }
+    ...
 }
+*/
 
 async function fetchTableStatus() {
     try {
@@ -90,6 +80,7 @@ function renderTables(statusData) {
         let icon = isBusy ? '❌' : '✅';
         let subText = isBusy ? 'ไม่ว่าง' : 'ว่าง';
         
+        // ส่วนแสดงชื่อลูกค้า (Admin) จะไม่ทำงานในโหมด Guest
         let customerNameHtml = '';
         if (isAdmin && isBusy && info.info) {
             customerNameHtml = `<div class="text-[10px] bg-black/20 rounded px-1 mt-1 truncate w-full">${info.info}</div>`;
@@ -111,29 +102,15 @@ function renderTables(statusData) {
 }
 
 window.handleTableClick = (tableNo, isBusy) => {
-    if (isAdmin && isBusy) {
-        Swal.fire({
-            title: `เคลียร์โต๊ะ ${tableNo}?`,
-            text: 'ยืนยันว่าลูกค้าเช็คบิลแล้ว',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'ใช่, เคลียร์',
-            cancelButtonText: 'ยกเลิก',
-            confirmButtonColor: '#80332d'
-        }).then((res) => {
-            if (res.isConfirmed) sendData({ action: 'admin_clear', userId: userProfile.userId, tableNo: tableNo });
-        });
+    // ไม่มีโหมด Admin Clear โต๊ะในเวอร์ชัน Guest
+    if (isBusy) {
+        Swal.fire('เต็ม', 'โต๊ะนี้มีคนจองแล้วครับ', 'error');
         return;
     }
 
     const shopStatus = checkShopOpen();
-    if (!shopStatus.open && !isAdmin) {
+    if (!shopStatus.open) {
         Swal.fire('ร้านปิด', shopStatus.reason, 'warning');
-        return;
-    }
-
-    if (isBusy) {
-        Swal.fire('เต็ม', 'โต๊ะนี้มีคนจองแล้วครับ', 'error');
         return;
     }
 
@@ -146,15 +123,22 @@ window.closeModal = () => document.getElementById('bookingModal').classList.add(
 
 document.getElementById('bookingForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    
+    // ดึงค่าจากฟอร์ม
+    const nicknameVal = document.getElementById('input-nickname').value;
+    const phoneVal = document.getElementById('input-phone').value;
+    const timeVal = document.getElementById('input-time').value;
+
     closeModal();
 
+    // สร้างข้อมูลจำลอง (Dummy Data) เพราะไม่ได้ Login
     const payload = {
         action: 'book',
-        userId: userProfile.userId,
-        displayName: userProfile.displayName,
-        nickname: document.getElementById('input-nickname').value,
-        phone: document.getElementById('input-phone').value,
-        time: document.getElementById('input-time').value,
+        userId: 'guest_' + Date.now(), // สร้าง ID มั่วๆ ให้ไม่ซ้ำ
+        displayName: nicknameVal,      // ใช้ชื่อเล่นเป็น DisplayName เลย
+        nickname: nicknameVal,
+        phone: phoneVal,
+        time: timeVal,
         tableNo: currentTable
     };
 
@@ -172,22 +156,13 @@ async function sendData(payload) {
             body: JSON.stringify(payload)
         });
 
-        if (payload.action === 'book') {
-            if (liff.isInClient()) {
-                await liff.sendMessages([{
-                    type: 'text',
-                    text: `📌 จองโต๊ะสำเร็จ!\n\nโต๊ะ: T-${payload.tableNo}\nชื่อ: ${payload.nickname}\nเบอร์: ${payload.phone}\nเวลา: ${payload.time}\n\nขอบคุณที่ใช้บริการครับ 🙏`
-                }]);
-                liff.closeWindow();
-            } else {
-                Swal.fire('สำเร็จ', 'จองเรียบร้อยแล้ว!', 'success').then(() => fetchTableStatus());
-            }
-        } 
-        else {
-            setTimeout(() => {
-                Swal.fire('สำเร็จ', 'เคลียร์โต๊ะแล้ว', 'success').then(() => fetchTableStatus());
-            }, 1000);
-        }
+        // แสดงผลสำเร็จเสมอ (ไม่ต้องเช็ค liff.isInClient)
+        Swal.fire({
+            icon: 'success',
+            title: 'จองสำเร็จ!',
+            text: `โต๊ะ T-${payload.tableNo} เวลา ${payload.time}`,
+            confirmButtonText: 'ตกลง'
+        }).then(() => fetchTableStatus());
 
     } catch (err) {
         console.error(err);
