@@ -1,0 +1,17 @@
+body { 
+    background-color: #fdf3e0; 
+}
+
+/* เอฟเฟกต์กดแล้วยุบลงเล็กน้อย */
+.table-card { 
+    transition: all 0.2s ease-in-out; 
+}
+
+.table-card:active { 
+    transform: scale(0.95); 
+}
+
+/* ซ่อน Scrollbar เวลาเปิด Modal (ถ้าต้องการ) */
+body.modal-open {
+    overflow: hidden;
+}
