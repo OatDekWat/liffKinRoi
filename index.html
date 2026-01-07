@@ -4,264 +4,317 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>จองโต๊ะร้านอาหาร</title>
+    
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Kanit', 'sans-serif'] },
+                    colors: {
+                        primary: '#80332d',    // แดงเลือดหมู
+                        secondary: '#ba9e6f',  // ทอง
+                        bg: '#fdf3e0',         // ครีม
+                        busy: '#ef4444',       // แดง (ไม่ว่าง)
+                        avail: '#10b981'       // เขียว (ว่าง)
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        body { 
-            background: radial-gradient(circle at top, #ffffff, #fdf3e0); 
-            background-color: #fdf3e0;
-            font-family: 'Kanit', sans-serif; 
-            padding-bottom: 50px; 
-            color: #80332d; 
-            min-height: 100vh;
-        }
-        h4 { color: #80332d; font-weight: bold; }
-        .table-box {
-            width: 80px; height: 80px;
-            margin: 10px auto;
-            border-radius: 12px;
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-            cursor: pointer; position: relative;
-            box-shadow: 0 4px 10px rgba(128, 51, 45, 0.2);
-            transition: transform 0.2s, box-shadow 0.2s;
-            font-weight: bold;
-        }
-        .table-box:active { transform: scale(0.95); }
-        
-        .available { background-color: #ba9e6f; color: white; border: 2px solid #a38b55; }
-        .busy { background-color: #80332d; color: white; border: 2px solid #5e2622; opacity: 0.9; }
-        
-        .zone-title { margin-top: 20px; font-weight: bold; color: #80332d; font-size: 1.2rem; }
-        .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-width: 400px; margin: auto; }
-        
-        .modal-header { background: #ba9e6f; color: white; border-bottom: none; }
-        .btn-primary { background-color: #80332d; border-color: #80332d; }
+        body { background-color: #fdf3e0; }
+        .table-card { transition: all 0.2s; }
+        .table-card:active { transform: scale(0.95); }
     </style>
 </head>
-<body>
+<body class="text-primary pb-10 min-h-screen">
 
-<div class="container text-center mt-4">
-    <h4>🍴 ระบบจองโต๊ะ</h4>
-    <p id="welcome-msg" class="text-muted small">Loading...</p>
-    
-    <div id="admin-panel" class="alert alert-info d-none">
-        <strong>Admin Mode:</strong> คลิกที่โต๊ะสีแดงเพื่อเคลียร์ให้ว่าง
-    </div>
-
-    <div id="shop-closed-alert" class="alert alert-danger d-none">
-        ⛔ ร้านปิด หรือ หมดเวลาจองแล้วครับ
-    </div>
-
-    <div class="zone-title">โซนในร้าน (Air)</div>
-    <div class="grid-container" id="indoor-zone"></div>
-
-    <hr>
-    <div class="zone-title">โซนหน้าร้าน (Outdoor)</div>
-    <div class="grid-container" id="outdoor-zone"></div>
-</div>
-
-<div class="modal fade" id="bookingModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">จองโต๊ะ <span id="modal-table-no"></span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="bg-white/50 backdrop-blur-md sticky top-0 z-10 shadow-sm">
+        <div class="max-w-md mx-auto p-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold">🍴 ระบบจองโต๊ะ</h1>
+                <p id="welcome-msg" class="text-xs text-gray-500">กำลังโหลด...</p>
             </div>
-            <div class="modal-body text-start">
-                <form id="bookingForm">
-                    <div class="mb-3">
-                        <label>ชื่อเล่น</label>
-                        <input type="text" class="form-control" id="input-nickname" required>
+            <button onclick="fetchTableStatus()" class="p-2 bg-white rounded-full shadow hover:bg-gray-50 text-secondary">
+                🔄
+            </button>
+        </div>
+    </div>
+
+    <div class="max-w-md mx-auto px-4 mt-4">
+        
+        <div id="admin-panel" class="hidden mb-4 bg-blue-100 border border-blue-200 text-blue-800 text-xs px-3 py-2 rounded-lg flex items-center gap-2">
+            <span>👑</span> <b>Admin Mode:</b> แตะที่โต๊ะสีแดงเพื่อเคลียร์
+        </div>
+
+        <div class="flex items-center gap-2 mb-3">
+            <div class="h-6 w-1.5 bg-primary rounded-full"></div>
+            <h2 class="text-lg font-bold text-primary">โซนในร้าน (Air)</h2>
+        </div>
+        <div class="grid grid-cols-3 gap-3" id="indoor-zone">
+            <div class="col-span-3 text-center text-gray-400 py-4">Loading tables...</div>
+        </div>
+
+        <div class="border-t border-primary/20 my-6"></div>
+
+        <div class="flex items-center gap-2 mb-3">
+            <div class="h-6 w-1.5 bg-secondary rounded-full"></div>
+            <h2 class="text-lg font-bold text-primary">โซนหน้าร้าน (Outdoor)</h2>
+        </div>
+        <div class="grid grid-cols-3 gap-3" id="outdoor-zone">
+            </div>
+
+    </div>
+
+    <div id="bookingModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onclick="closeModal()"></div>
+
+        <div class="fixed inset-0 z-10 overflow-y-auto">
+            <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+                <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl transition-all w-full max-w-sm">
+                    
+                    <div class="bg-primary px-4 py-3 sm:px-6 flex justify-between items-center">
+                        <h3 class="text-lg font-bold leading-6 text-white">
+                            จองโต๊ะ <span id="modal-table-no" class="text-secondary"></span>
+                        </h3>
+                        <button onclick="closeModal()" class="text-white/70 hover:text-white text-2xl">&times;</button>
                     </div>
-                    <div class="mb-3">
-                        <label>เบอร์โทร (บังคับ)</label>
-                        <input type="tel" class="form-control" id="input-phone" required>
+
+                    <div class="px-4 py-5 sm:p-6 space-y-4">
+                        <form id="bookingForm" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">ชื่อเล่น</label>
+                                <input type="text" id="input-nickname" required class="mt-1 block w-full rounded-lg border-gray-300 bg-gray-50 border px-3 py-2 text-gray-900 focus:border-primary focus:ring-primary outline-none" placeholder="เช่น น้องบี">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">เบอร์โทร</label>
+                                <input type="tel" id="input-phone" required class="mt-1 block w-full rounded-lg border-gray-300 bg-gray-50 border px-3 py-2 text-gray-900 focus:border-primary focus:ring-primary outline-none" placeholder="08x-xxx-xxxx">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">เวลาที่จะเข้า (ร้านปิด 05:00)</label>
+                                <input type="time" id="input-time" required class="mt-1 block w-full rounded-lg border-gray-300 bg-gray-50 border px-3 py-2 text-gray-900 focus:border-primary focus:ring-primary outline-none">
+                            </div>
+                            
+                            <button type="submit" class="w-full rounded-lg bg-primary px-3.5 py-3 text-base font-semibold text-white shadow-sm hover:bg-[#6b2b26] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-colors">
+                                ยืนยันการจอง
+                            </button>
+                        </form>
                     </div>
-                    <div class="mb-3">
-                        <label>เวลาที่จะเข้า (เช่น 18:30)</label>
-                        <input type="time" class="form-control" id="input-time" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">ยืนยันการจอง</button>
-                </form>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<script>
-    const LIFF_ID = "2008809721-wkEpHOm0"; 
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzg0_0f7QP28CFwbXCjS7qHk4pA16ItaAHXqBpnx0SeRwJ-gHmjXIXvxnM8ovtZ-Gsn/exec";
+    <script>
+        // --- SETUP ---
+        const LIFF_ID = "2008809721-wkEpHOm0"; 
+        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzg0_0f7QP28CFwbXCjS7qHk4pA16ItaAHXqBpnx0SeRwJ-gHmjXIXvxnM8ovtZ-Gsn/exec"; 
 
-    let userProfile = null;
-    let isAdmin = false;
-
-    const indoorTables = [7, 8, 9, 6, 5, 4, 3, 2, 1]; 
-    const outdoorTables = [10, 11, 12, 14]; 
-
-    async function main() {
-        await liff.init({ liffId: LIFF_ID });
-        if (!liff.isLoggedIn()) {
-            liff.login();
-            return;
-        }
+        // --- GLOBAL VARS ---
+        let userProfile = null;
+        let isAdmin = false;
+        let currentTable = null;
         
-        userProfile = await liff.getProfile();
-        document.getElementById('welcome-msg').innerText = `สวัสดี, ${userProfile.displayName}`;
-        
-        checkAdminStatus();
-        fetchTableStatus();
-    }
+        const indoorTables = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+        const outdoorTables = [10, 11, 12, 14];
 
-    function isShopOpen() {
-        const now = new Date();
-        const day = now.getDay();
-        const hour = now.getHours();
-        if (day === 1) return { open: false, reason: "ขออภัย ร้านหยุดทุกวันจันทร์ครับ" };
-        if (hour >= 20) return { open: false, reason: "ปิดรับจองหลัง 20:00 น. ครับ" };
-        return { open: true };
-    }
-
-    async function checkAdminStatus() {
-        try {
-            const res = await fetch(`${APPS_SCRIPT_URL}?op=checkAdmin&userId=${userProfile.userId}`);
-            const data = await res.json();
-            if (data.isAdmin) {
-                isAdmin = true;
-                document.getElementById('admin-panel').classList.remove('d-none');
-            }
-        } catch(e) { console.error(e); }
-    }
-
-    async function fetchTableStatus() {
-        Swal.fire({title: 'กำลังโหลด...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
-        try {
-            const res = await fetch(`${APPS_SCRIPT_URL}?op=getStatus`);
-            const data = await res.json(); 
-            Swal.close();
-            renderTables(data);
-        } catch (error) {
-            Swal.fire('Error', 'ไม่สามารถดึงข้อมูลได้', 'error');
-        }
-    }
-
-    function renderTables(statusData) {
-        const statusMap = {};
-        statusData.forEach(row => statusMap[row[0]] = row[1]); 
-
-        const createBox = (num) => {
-            const status = statusMap[num] || 'Available';
-            const cssClass = status === 'Available' ? 'available' : 'busy';
-            const icon = status === 'Available' ? '✅' : '❌';
-            return `<div class="table-box ${cssClass}" onclick="handleTableClick(${num}, '${status}')">
-                        <h6>โต๊ะ ${num}</h6><small>${icon}</small>
-                    </div>`;
-        };
-
-        document.getElementById('indoor-zone').innerHTML = indoorTables.map(num => createBox(num)).join('');
-        document.getElementById('outdoor-zone').innerHTML = outdoorTables.map(num => createBox(num)).join('');
-    }
-
-    window.handleTableClick = (tableNo, status) => {
-        if (isAdmin && status !== 'Available') {
-            Swal.fire({
-                title: `เคลียร์โต๊ะ ${tableNo}?`, showCancelButton: true, confirmButtonText: 'ใช่'
-            }).then((result) => { if (result.isConfirmed) updateTableStatus(tableNo, 'admin_clear'); });
-            return;
-        }
-
-        const shopStatus = isShopOpen();
-        if (!shopStatus.open && !isAdmin) {
-            Swal.fire('ขออภัย', shopStatus.reason, 'error');
-            return;
-        }
-
-        if (status !== 'Available') {
-            Swal.fire('เต็ม', 'โต๊ะนี้มีคนจองแล้วครับ', 'warning');
-            return;
-        }
-
-        document.getElementById('modal-table-no').innerText = tableNo;
-        window.currentTableBooking = tableNo;
-        new bootstrap.Modal(document.getElementById('bookingModal')).show();
-    };
-
-    document.getElementById('bookingForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const shopStatus = isShopOpen();
-        if (!shopStatus.open && !isAdmin) {
-             bootstrap.Modal.getInstance(document.getElementById('bookingModal')).hide();
-             Swal.fire('ขออภัย', shopStatus.reason, 'error');
-             return;
-        }
-
-        const nickname = document.getElementById('input-nickname').value;
-        const phone = document.getElementById('input-phone').value;
-        const time = document.getElementById('input-time').value;
-
-        bootstrap.Modal.getInstance(document.getElementById('bookingModal')).hide();
-
-        const payload = {
-            action: 'book',
-            userId: userProfile.userId,
-            displayName: userProfile.displayName,
-            nickname: nickname,
-            phone: phone,
-            time: time,
-            tableNo: window.currentTableBooking
-        };
-
-        await sendData(payload);
-    });
-
-    async function updateTableStatus(tableNo, action) {
-        await sendData({ action: action, userId: userProfile.userId, tableNo: tableNo });
-    }
-
-    async function sendData(payload) {
-        Swal.fire({title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
-        
-        try {
-            // 1. ส่งข้อมูลไปเก็บที่ Google Sheet
-            await fetch(APPS_SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // แก้เป็น text/plain
-                body: JSON.stringify(payload)
-            });
-            
-            // 2. ถ้าเป็นการจอง ให้ LIFF ส่งข้อความเข้าแชท
-            if (payload.action === 'book') {
-                if (liff.isInClient()) {
-                    // ข้อความที่จะส่งกลับเข้าแชท
-                    const msg = `📌 จองโต๊ะสำเร็จ!\n\nโต๊ะ: ${payload.tableNo}\nชื่อ: ${payload.nickname}\nเบอร์: ${payload.phone}\nเวลา: ${payload.time}`;
-                    
-                    await liff.sendMessages([{
-                        type: 'text',
-                        text: msg
-                    }]);
-                    
-                    liff.closeWindow(); // ส่งเสร็จปิดจอเลย
-                } else {
-                    Swal.fire('สำเร็จ', 'บันทึกข้อมูลแล้ว', 'success');
+        // --- MAIN FUNCTION ---
+        async function main() {
+            try {
+                await liff.init({ liffId: LIFF_ID });
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                    return;
                 }
-            } else {
-                // ถ้าเป็น Admin เคลียร์โต๊ะ
-                setTimeout(() => {
-                    Swal.fire('สำเร็จ', 'เคลียร์โต๊ะแล้ว', 'success').then(() => fetchTableStatus());
-                }, 1000);
+                userProfile = await liff.getProfile();
+                document.getElementById('welcome-msg').innerText = `สวัสดี, ${userProfile.displayName}`;
+                
+                checkAdminStatus();
+                fetchTableStatus();
+                setInterval(fetchTableStatus, 10000);
+
+            } catch (err) {
+                console.error('LIFF Init Error:', err);
+                Swal.fire('Error', 'ไม่สามารถเชื่อมต่อ LINE ได้', 'error');
+            }
+        }
+
+        // --- LOGIC แก้ไขใหม่: เช็คเวลาเปิด-ปิด ---
+        function checkShopOpen() {
+            const now = new Date();
+            const hour = now.getHours();
+            let day = now.getDay(); // 0=อาทิตย์, 1=จันทร์
+
+            // ถ้าเวลายังไม่ถึงตี 5 (เช่น ตี 1, ตี 2) ให้ถือว่าเป็น "คืนของวันก่อนหน้า"
+            // เพื่อให้ร้านไม่ปิดตอนข้ามคืนวันจันทร์
+            if (hour < 5) {
+                day = day - 1;
+                if (day === -1) day = 6; // ถ้าเป็นเช้าอาทิตย์(0) ถอยไปเป็นเสาร์(6)
             }
 
-        } catch (error) {
-            console.error(error);
-            Swal.fire('Error', 'เกิดข้อผิดพลาด', 'error');
+            // กฎ: หยุดทุกวันจันทร์ (นับตามคืน)
+            // ถ้าเป็นคืนวันอาทิตย์ (ข้ามไปตี 2 จันทร์) -> day จะถูกปัดเป็น 0 (อาทิตย์) -> ร้านเปิด (ถูกต้อง)
+            // ถ้าเป็นคืนวันจันทร์ (ข้ามไปตี 2 อังคาร) -> day จะถูกปัดเป็น 1 (จันทร์) -> ร้านปิด (ถูกต้อง)
+            if (day === 1) return { open: false, reason: 'ร้านหยุดทุกวันจันทร์ครับ' };
+            
+            // กฎ: ปิดช่วง 05:00 - 16:00
+            if (hour >= 5 && hour < 16) {
+                 return { open: false, reason: 'ร้านยังไม่เปิด (เปิด 16:00 - 05:00 น.)' };
+            }
+            
+            return { open: true };
         }
-    }
 
-    main();
-</script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        async function checkAdminStatus() {
+            try {
+                const res = await fetch(`${APPS_SCRIPT_URL}?op=checkAdmin&userId=${userProfile.userId}`);
+                const data = await res.json();
+                if (data.isAdmin) {
+                    isAdmin = true;
+                    document.getElementById('admin-panel').classList.remove('hidden');
+                }
+            } catch(e) { console.warn(e); }
+        }
+
+        async function fetchTableStatus() {
+            try {
+                const res = await fetch(`${APPS_SCRIPT_URL}?op=getStatus`);
+                const data = await res.json();
+                renderTables(data);
+            } catch (e) { console.error('Fetch Error:', e); }
+        }
+
+        function renderTables(statusData) {
+            const statusMap = {};
+            statusData.forEach(row => {
+                statusMap[row[0]] = { status: row[1], info: row[2] };
+            });
+
+            const createCard = (num) => {
+                const info = statusMap[num] || { status: 'Available', info: '' };
+                const isBusy = (info.status !== 'Available' && info.status !== 'ว่าง');
+                
+                let bgClass = isBusy 
+                    ? 'bg-primary text-white border-primary shadow-inner opacity-90' 
+                    : 'bg-white text-primary border-secondary hover:bg-yellow-50 shadow-md';
+                
+                let icon = isBusy ? '❌' : '✅';
+                let subText = isBusy ? 'ไม่ว่าง' : 'ว่าง';
+                
+                let customerNameHtml = '';
+                if (isAdmin && isBusy && info.info) {
+                    customerNameHtml = `<div class="text-[10px] bg-black/20 rounded px-1 mt-1 truncate w-full">${info.info}</div>`;
+                }
+
+                return `
+                <div onclick="handleTableClick(${num}, ${isBusy})" 
+                     class="table-card relative h-24 rounded-xl border-2 flex flex-col justify-center items-center cursor-pointer select-none ${bgClass}">
+                    <div class="text-xl font-bold">T-${num}</div>
+                    <div class="text-xs flex items-center gap-1 opacity-80">
+                        <span>${icon}</span> ${subText}
+                    </div>
+                    ${customerNameHtml}
+                </div>`;
+            };
+
+            document.getElementById('indoor-zone').innerHTML = indoorTables.map(num => createCard(num)).join('');
+            document.getElementById('outdoor-zone').innerHTML = outdoorTables.map(num => createCard(num)).join('');
+        }
+
+        window.handleTableClick = (tableNo, isBusy) => {
+            if (isAdmin && isBusy) {
+                Swal.fire({
+                    title: `เคลียร์โต๊ะ ${tableNo}?`,
+                    text: 'ยืนยันว่าลูกค้าเช็คบิลแล้ว',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'ใช่, เคลียร์',
+                    cancelButtonText: 'ยกเลิก',
+                    confirmButtonColor: '#80332d'
+                }).then((res) => {
+                    if (res.isConfirmed) sendData({ action: 'admin_clear', userId: userProfile.userId, tableNo: tableNo });
+                });
+                return;
+            }
+
+            const shopStatus = checkShopOpen();
+            if (!shopStatus.open && !isAdmin) {
+                Swal.fire('ร้านปิด', shopStatus.reason, 'warning');
+                return;
+            }
+
+            if (isBusy) {
+                Swal.fire('เต็ม', 'โต๊ะนี้มีคนจองแล้วครับ', 'error');
+                return;
+            }
+
+            currentTable = tableNo;
+            document.getElementById('modal-table-no').innerText = tableNo;
+            document.getElementById('bookingModal').classList.remove('hidden');
+        };
+
+        window.closeModal = () => document.getElementById('bookingModal').classList.add('hidden');
+
+        document.getElementById('bookingForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            closeModal();
+
+            const payload = {
+                action: 'book',
+                userId: userProfile.userId,
+                displayName: userProfile.displayName,
+                nickname: document.getElementById('input-nickname').value,
+                phone: document.getElementById('input-phone').value,
+                time: document.getElementById('input-time').value,
+                tableNo: currentTable
+            };
+
+            await sendData(payload);
+        });
+
+        async function sendData(payload) {
+            Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (payload.action === 'book') {
+                    if (liff.isInClient()) {
+                        await liff.sendMessages([{
+                            type: 'text',
+                            text: `📌 จองโต๊ะสำเร็จ!\n\nโต๊ะ: T-${payload.tableNo}\nชื่อ: ${payload.nickname}\nเบอร์: ${payload.phone}\nเวลา: ${payload.time}\n\nขอบคุณที่ใช้บริการครับ 🙏`
+                        }]);
+                        liff.closeWindow();
+                    } else {
+                        Swal.fire('สำเร็จ', 'จองเรียบร้อยแล้ว!', 'success').then(() => fetchTableStatus());
+                    }
+                } 
+                else {
+                    setTimeout(() => {
+                        Swal.fire('สำเร็จ', 'เคลียร์โต๊ะแล้ว', 'success').then(() => fetchTableStatus());
+                    }, 1000);
+                }
+
+            } catch (err) {
+                console.error(err);
+                Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อ Server ได้', 'error');
+            }
+        }
+
+        main();
+    </script>
 </body>
 </html>
